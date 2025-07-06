@@ -1,6 +1,16 @@
+import uuid
+import json
+import redis.asyncio as redis
+import aio_pika
+from datetime import datetime
+from typing import Optional, List
+
+from models import TaskCreate, TaskResponse, TaskUpdate, TaskStatus
 
 class TaskService:
     def __init__(self, rabbitmq_url: str, redis_url: str):
+        print("==> [services.py] Initializing TaskService")
+
         self.rabbitmq_url = rabbitmq_url
         self.rabbitmq_connection = None
         self.rabbitmq_channel = None
@@ -13,13 +23,14 @@ class TaskService:
         """initialize the connection to rabbitmq and redis"""
         try:
             # connect to rabbitmq
+            print(f"==> [services.py] Connecting to RabbitMQ: {self.rabbitmq_url}")
             self.rabbitmq_connection = await aio_pika.connect_robust(self.rabbitmq_url)
             print("Connected to RabbitMQ")
             self.rabbitmq_channel = await self.rabbitmq_connection.channel()
             print("Created RabbitMQ channel")
 
             #queue for task
-            await self.rabbitmq_channel.declare_queue("task_queue", durable=True)
+            queue = await self.rabbitmq_channel.declare_queue("task_queue", durable=True)
             print(f"Declared queue: {queue.name}")
 
             # connect to redis
@@ -176,5 +187,3 @@ class TaskService:
         if self.redis_client:
             await self.redis_client.close()
             print("Closed Redis connection")
-
-
