@@ -1,3 +1,26 @@
+#!/usr/bin/env python3
+"""
+API Server test class
+Tests API endpoints for task management
+
+REQUIRED SERVICES:
+Before running this test, ensure the following services are running:
+
+1. API Server (port 8000):
+   cd api_server && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+2. RabbitMQ (port 5672):
+   docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+   # Or use docker-compose: docker-compose up -d rabbitmq
+
+3. Redis (port 6379):
+   docker run -d --name redis -p 6379:6379 redis:7-alpine
+   # Or use docker-compose: docker-compose up -d redis
+
+4. Or start all services with docker-compose:
+   docker-compose up -d
+"""
+
 import requests
 import json
 import time

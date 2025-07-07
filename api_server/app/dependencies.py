@@ -6,8 +6,8 @@ from services import TaskService
 # Load environment variables from .env file
 load_dotenv()
 
-REDIS_URL = os.getenv("REDIS_URL")
-RABBITMQ_URL = os.getenv("RABBITMQ_URL")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/")
+RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://admin:admin123@localhost:5672/")
 
 _task_service: TaskService = None
 

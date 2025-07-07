@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+"""
+Connection test script
+Tests RabbitMQ and Redis connections
+
+REQUIRED SERVICES:
+Before running this test, ensure the following services are running:
+
+1. RabbitMQ (port 5672):
+   docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+   # Or use docker-compose: docker-compose up -d rabbitmq
+
+2. Redis (port 6379):
+   docker run -d --name redis -p 6379:6379 redis:7-alpine
+   # Or use docker-compose: docker-compose up -d redis
+
+3. Or start both services with docker-compose:
+   docker-compose up -d rabbitmq redis
+"""
+
 import asyncio
 import aio_pika
 import redis.asyncio as redis
