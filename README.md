@@ -16,8 +16,10 @@ The system consists of several modular components designed for scalability and m
 
 ## 📊 System Architecture
 
+### 🎯 Task Processing Flow
+
 ```mermaid
-graph TB
+graph LR
     A[Client] --> B[API Server]
     B --> C[RabbitMQ Queue]
     C --> D[Worker 1]
@@ -28,18 +30,70 @@ graph TB
     F --> G
     B --> G
     
-    subgraph "Task Flow"
-        H[Task Submission] --> I[Task Queue]
-        I --> J[Worker Processing]
-        J --> K[Status Update]
-        K --> L[Result Storage]
+    style A fill:#e1f5fe,stroke:#333,color:#000
+    style B fill:#f3e5f5,stroke:#333,color:#000
+    style C fill:#fff3e0,stroke:#333,color:#000
+    style G fill:#e8f5e8,stroke:#333,color:#000
+```
+
+### 🔄 Worker Lifecycle Flow
+
+```mermaid
+graph LR
+    A[Worker Startup] --> B[Registration]
+    B --> C[Heartbeat Loop]
+    C --> D[Task Processing]
+    D --> E[Health Check]
+    E --> F{Healthy?}
+    F -->|Yes| C
+    F -->|No| G[Auto Recovery]
+    G --> C
+    H[Shutdown Signal] --> I[Graceful Shutdown]
+    I --> J[Deregistration]
+    
+    style A fill:#e3f2fd,stroke:#333,color:#000
+    style B fill:#e8f5e8,stroke:#333,color:#000
+    style C fill:#fff8e1,stroke:#333,color:#000
+    style D fill:#fce4ec,stroke:#333,color:#000
+    style E fill:#f3e5f5,stroke:#333,color:#000
+    style F fill:#ffebee,stroke:#333,color:#000
+    style G fill:#fff3e0,stroke:#333,color:#000
+    style H fill:#ffebee,stroke:#333,color:#000
+    style I fill:#e8f5e8,stroke:#333,color:#000
+    style J fill:#e0f2f1,stroke:#333,color:#000
+```
+
+### 📊 Data Flow
+
+```mermaid
+graph TB
+    subgraph "Task Submission"
+        A1[Client] --> A2[API Server]
+        A2 --> A3[Task Validation]
+        A3 --> A4[Queue Assignment]
     end
     
-    subgraph "Worker Management"
-        M[Worker Registration] --> N[Heartbeat Monitoring]
-        N --> O[Health Check]
-        O --> P[Auto Recovery]
+    subgraph "Task Processing"
+        B1[RabbitMQ Queue] --> B2[Worker Pickup]
+        B2 --> B3[Task Execution]
+        B3 --> B4[Status Update]
     end
+    
+    subgraph "State Management"
+        C1[Redis Storage] --> C2[Task Status]
+        C2 --> C3[Worker Registry]
+        C3 --> C4[Heartbeat Data]
+    end
+    
+    A4 --> B1
+    B4 --> C1
+    C2 --> A2
+    
+    style A1 fill:#e1f5fe,stroke:#333,color:#000
+    style A2 fill:#f3e5f5,stroke:#333,color:#000
+    style B1 fill:#fff3e0,stroke:#333,color:#000
+    style B2 fill:#e8f5e8,stroke:#333,color:#000
+    style C1 fill:#e0f2f1,stroke:#333,color:#000
 ```
 
 ## 🧩 Module Structure
