@@ -44,7 +44,7 @@ class DistributedWorker:
             self.registry = WorkerRegistry(redis_client)
             
             # 3. Create worker using factory
-            worker = await WorkerFactory.create_worker(connection, channel, redis_client)
+            worker = await WorkerFactory.create_worker(connection, channel, redis_client, self.worker_id)
             
             # 4. Create lifecycle manager
             self.lifecycle_manager = WorkerLifecycleManager(worker, self.registry, self.worker_id)

@@ -7,7 +7,7 @@ class WorkerFactory:
     """Factory for creating TaskWorker instances"""
     
     @staticmethod
-    async def create_worker(connection, channel, redis_client) -> TaskWorker:
+    async def create_worker(connection, channel, redis_client, worker_id: str = None) -> TaskWorker:
         """
         Create a TaskWorker instance with established connections
         
@@ -15,14 +15,15 @@ class WorkerFactory:
             connection: Established RabbitMQ connection
             channel: Established RabbitMQ channel
             redis_client: Established Redis client
+            worker_id: Worker identifier for logging
             
         Returns:
             TaskWorker instance
         """
         try:
-            worker = TaskWorker(connection, channel, redis_client)
-            logger.info("TaskWorker created successfully")
+            worker = TaskWorker(connection, channel, redis_client, worker_id)
+            logger.info(f"TaskWorker {worker_id} created successfully")
             return worker
         except Exception as e:
-            logger.error(f"Failed to create TaskWorker: {e}")
+            logger.error(f"Failed to create TaskWorker {worker_id}: {e}")
             raise 
