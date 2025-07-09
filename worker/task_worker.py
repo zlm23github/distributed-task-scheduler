@@ -11,34 +11,34 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 class TaskWorker:
-    def __init__(self, rabbitmq_url: str, redis_url: str):
-        self.rabbitmq_url = rabbitmq_url
-        self.redis_url = redis_url
-        self.connection = None
-        self.channel = None
-        self.redis_client = None
-
-    async def connect(self):
-        """connect to rabbitmq and redis"""
-        self.connection = await aio_pika.connect_robust(self.rabbitmq_url)
-        self.channel = await self.connection.channel()
-        await self.channel.set_qos(prefetch_count=10)
-
-        self.redis_client = redis.from_url(self.redis_url)
-
-        logger.info(f"Connected to RabbitMQ: {self.rabbitmq_url}")
-        logger.info(f"Connected to Redis: {self.redis_url}")
+    def __init__(self, connection: aio_pika.Connection, channel: aio_pika.Channel, redis_client: redis.Redis):
+        """
+        Initialize TaskWorker with established connections.
+        
+        Args:
+            connection: Established RabbitMQ connection
+            channel: Established RabbitMQ channel
+            redis_client: Established Redis client
+        """
+        self.connection = connection
+        self.channel = channel
+        self.redis_client = redis_client
+        
+        # Set QoS for fair distribution
+        asyncio.create_task(self.channel.set_qos(prefetch_count=10))
+        
+        logger.info("TaskWorker initialized with established connections")
 
     async def close(self):
+        """Close connections (called by the parent worker)"""
         if self.connection:
             await self.connection.close()
         if self.redis_client:
             await self.redis_client.close()
-
-        logger.info("Worker closed")
+        logger.info("TaskWorker connections closed")
 
     async def update_task_status(self, task_id: str, status: str, result=None, error=None):
-        """update task status"""
+        """Update task status in Redis"""
         try:
             task_key = f"task:{task_id}"
             task_data = await self.redis_client.get(task_key)
@@ -60,7 +60,7 @@ class TaskWorker:
             if error is not None:
                 task["error"] = error
 
-            # write back to Redis
+            # Write back to Redis
             await self.redis_client.set(task_key, json.dumps(task), ex=3600)
             logger.info(f"Task {task_id} status updated to: {status}")
             return task
@@ -70,6 +70,7 @@ class TaskWorker:
             raise
 
     async def process_task(self, task_data: dict):
+        """Process a single task"""
         try:
             task_id = task_data.get("task_id")
             task_type = task_data.get("task_type")
@@ -81,7 +82,7 @@ class TaskWorker:
             handler = TaskHandlerFactory.get_handler(task_type)
             result = await handler.handle(parameters)
 
-            # update task status
+            # Update task status
             await self.update_task_status(task_id, "completed", result=result, error=None)
 
             print(f"🎯 [Worker] Task {task_id} completed with result: {result}")
@@ -93,7 +94,7 @@ class TaskWorker:
             raise
     
     async def handle_message(self, message):
-        """handle incoming message from rabbitmq"""
+        """Handle incoming message from RabbitMQ"""
         try:
             async with message.process():
                 body = message.body.decode('utf-8')
@@ -102,14 +103,14 @@ class TaskWorker:
                 task_id = task_data.get("task_id")
                 task_type = task_data.get("task_type")
                 
-                # 添加消费消息的输出
+                # Add message consumption output
                 print(f"🔄 [Worker] Consuming task: {task_id} (type: {task_type})")
                 logger.info(f"🔄 [Worker] Consuming task: {task_id} (type: {task_type})")
                 
-                # update task status to running
+                # Update task status to running
                 await self.update_task_status(task_id, "running")
 
-                # process task  
+                # Process task  
                 await self.process_task(task_data)
 
                 print(f"✅ [Worker] Task {task_id} processed successfully")
@@ -120,30 +121,21 @@ class TaskWorker:
             logger.error(f"❌ [Worker] Error processing message: {e}")
             raise
 
-    async def run(self):
-        """run the worker"""
+    async def process_tasks(self):
+        """Start processing tasks from the queue"""
         try:
-            await self.connect()
-
+            # Declare queue
             queue = await self.channel.declare_queue("task_queue", durable=True)
+            
+            # Start consuming messages
             await queue.consume(self.handle_message)
 
-            logger.info("Worker started, waiting for tasks...")
+            logger.info("TaskWorker started, waiting for tasks...")
 
-            # run forever
+            # Run forever
             while True:
                 await asyncio.sleep(1)
 
         except Exception as e:
-            logger.error(f"Error in worker: {e}")
+            logger.error(f"Error in TaskWorker: {e}")
             raise
-    
-async def main():
-    """main function"""
-    rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://admin:admin123@localhost:5672/")
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/")
-    worker = TaskWorker(rabbitmq_url, redis_url)
-    await worker.run()
-
-if __name__ == "__main__":
-    asyncio.run(main())
